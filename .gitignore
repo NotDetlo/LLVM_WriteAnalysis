@@ -1,0 +1,22 @@
+# Build files
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Binaries
+*.so
+*.o
+*.out
+
+# LLVM generated files
+*.bc
+*.ll
+
+# Results (optional)
+results.txt
+results.csv
+secure_results.txt
+
+# OS files
+.DS_Store
