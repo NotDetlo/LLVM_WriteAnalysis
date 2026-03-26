@@ -1,7 +1,8 @@
-alpha = 0.4
-beta = 0.4
-gamma = 0.2
-threshold = 0.5
+import statistics
+
+alpha = 0.6
+gamma = 0.4
+threshold = 0.6
 
 results_file = "build/results.txt"
 secure_file = "build/secure_results.txt"
@@ -38,7 +39,19 @@ with open(results_file) as f:
             functions[current_func]["mi"] = float(line.split(":")[1])
 
 # =========================
-# Step 3: Compute score
+# Step 3: Z-score normalization prep
+# =========================
+wf_values = [v.get("wf", 0) for v in functions.values()]
+mi_values = [v.get("mi", 0) for v in functions.values()]
+
+wf_mean = statistics.mean(wf_values) if wf_values else 0
+mi_mean = statistics.mean(mi_values) if mi_values else 0
+
+wf_std = statistics.stdev(wf_values) if len(wf_values) > 1 else 1
+mi_std = statistics.stdev(mi_values) if len(mi_values) > 1 else 1
+
+# =========================
+# Step 4: Compute score
 # =========================
 print("\nFunction\tScore\tMapping\tSensitive")
 
@@ -47,11 +60,21 @@ for func, vals in functions.items():
     wf = vals.get("wf", 0)
     mi = vals.get("mi", 0)
 
-    # 🔥 NEW: get sensitivity from file
-    sens = 1.0 if func in secure_funcs else 0.0
+    # 🔥 Z-score normalization (KEY FIX)
+    wf_norm = (wf - wf_mean) / wf_std if wf_std != 0 else 0
+    mi_norm = (mi - mi_mean) / mi_std if mi_std != 0 else 0
 
-    score = alpha*wf + beta*sens + gamma*mi
+    if func in secure_funcs:
+        # ✅ Secure → always SRAM
+        score = 1.0
+        mapping = "SRAM"
+        sens = 1
+    else:
+        sens = 0
 
-    mapping = "SRAM" if score >= threshold else "FRAM"
+        # 🔥 Score only for NON-secure functions
+        score = alpha * wf_norm + gamma * mi_norm
 
-    print(f"{func}\t{score:.3f}\t{mapping}\t{int(sens)}")
+        mapping = "SRAM" if score >= threshold else "FRAM"
+
+    print(f"{func}\t{score:.3f}\t{mapping}\t{sens}")
